@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ChasquiTours · Viaje</title>
+<meta property="og:title" content="Mira este viaje en ChasquiTours">
+<meta property="og:description" content="Boletos de bus y viajes por Bolivia. Reserva tu lugar en la app.">
+<meta property="og:image" content="https://coquimbo771.github.io/chasquitours-legal/logo-email.png">
+<style>
+  :root { --green:#059669; --text:#0f172a; --muted:#64748b; --bg:#f1f5f9; --card:#fff; }
+  @media (prefers-color-scheme: dark) { :root { --text:#e5e7eb; --muted:#9ca3af; --bg:#0b1220; --card:#111827; } }
+  * { box-sizing:border-box; } body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:520px; margin:0 auto; padding:20px 16px 40px; }
+  .brand { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+  .brand img { width:44px; height:auto; } .brand b { color:var(--green); font-size:18px; }
+  .card { background:var(--card); border-radius:18px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,.08); }
+  .cover { width:100%; aspect-ratio:4/3; object-fit:cover; background:#e2e8f0; display:block; }
+  .body { padding:18px; } h1 { margin:0 0 6px; font-size:22px; line-height:1.25; }
+  .route { display:inline-flex; gap:6px; align-items:center; background:rgba(5,150,105,.1); color:var(--green); font-weight:700; padding:6px 12px; border-radius:999px; font-size:14px; }
+  .meta { color:var(--muted); margin:10px 0; } .price { font-size:26px; font-weight:800; color:var(--green); }
+  .desc { white-space:pre-line; color:var(--text); margin:12px 0 0; }
+  .btn { display:block; text-align:center; text-decoration:none; font-weight:800; padding:15px; border-radius:14px; margin-top:16px; }
+  .primary { background:var(--green); color:#fff; } .ghost { border:2px solid var(--green); color:var(--green); }
+  .note { color:var(--muted); font-size:13px; text-align:center; margin-top:14px; }
+  .msg { text-align:center; padding:40px 10px; color:var(--muted); }
+</style>
+</head>
+<body><main>
+  <div class="brand"><img src="logo-email.png" alt=""><b>ChasquiTours</b></div>
+  <div id="app" class="msg">Cargando…</div>
+  <p class="note">¿No tienes la app? Pronto en Google Play. <a href="privacidad.html">Privacidad</a></p>
+</main>
+<script>
+(function () {
+  var SUPABASE_URL = 'https://mtjlajrpxqsuxnymoikm.supabase.co';
+  var ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10amxhanJweHFzdXhueW1vaWttIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1NTEzNjIsImV4cCI6MjA5OTEyNzM2Mn0.Jl-btR7_ytkgSWqzFurT1UtGOcqPNhmpGkEySlzfUeA';
+  var app = document.getElementById('app');
+  var id = new URLSearchParams(location.search).get('id');
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function clean(s) { return String(s || '').replace(/^Terminal de Buses\s+/i, '').replace(/\s*\(.*\)\s*$/, '').trim(); }
+  if (!id) { app.textContent = 'Enlace incompleto.'; return; }
+  var q = SUPABASE_URL + '/rest/v1/products?select=id,titulo,descripcion_corta,foto_portada,precio_base_usd,categoria_principal,status,detalles_tecnicos&id=eq.' + encodeURIComponent(id);
+  fetch(q, { headers: { apikey: ANON, Authorization: 'Bearer ' + ANON } })
+    .then(function (r) { return r.json(); })
+    .then(function (rows) {
+      var p = rows && rows[0];
+      if (!p || p.status !== 'active') { app.innerHTML = '<b>Esta publicación ya no está disponible.</b><br>Puede que el viaje ya haya salido.'; return; }
+      var d = p.detalles_tecnicos || {};
+      var bus = p.categoria_principal === 'Rutas' || p.categoria_principal === 'Transporte';
+      var route = bus && d.origen && d.destino ? clean(d.origen) + ' → ' + clean(d.destino) : clean(d.destino || d.origen);
+      var when = [d.fecha_salida, d.hora_salida].filter(Boolean).join(' · ');
+      var price = Number(p.precio_base_usd) > 0 ? 'Bs ' + Number(p.precio_base_usd) : '';
+      document.title = (route || p.titulo || 'Viaje') + ' · ChasquiTours';
+      app.className = '';
+      app.innerHTML = '<div class="card">' +
+        (p.foto_portada ? '<img class="cover" src="' + esc(p.foto_portada) + '" alt="">' : '') +
+        '<div class="body"><h1>' + esc(p.titulo || 'Viaje') + '</h1>' +
+        (route ? '<span class="route">' + (bus ? '🚌 ' : '📍 ') + esc(route) + '</span>' : '') +
+        (when ? '<div class="meta">Salida: ' + esc(when) + '</div>' : '') +
+        (price ? '<div class="price">' + esc(price) + '</div>' : '') +
+        (p.descripcion_corta ? '<p class="desc">' + esc(p.descripcion_corta) + '</p>' : '') +
+        '<a class="btn primary" href="chaskiterminal://p/' + encodeURIComponent(p.id) + '">Abrir en la app ChasquiTours</a>' +
+        '</div></div>';
+    })
+    .catch(function () { app.textContent = 'No se pudo cargar. Revisa tu conexión.'; });
+})();
+</script>
+</body></html>
